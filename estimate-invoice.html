@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>견적서·청구서 생성기 (템플릿 선택 기능)</title>
+  <title>견적서·청구서 생성기 (템플릿/폰트 크기 조절)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css">
   <style>
@@ -54,6 +54,9 @@
     .stamp-container:active {
         cursor: grabbing;
     }
+    .pdf-render-fix tr {
+      display: block;
+    }
 
     /* --- 템플릿 스타일 --- */
     .template-accent-bar { display: none; }
@@ -95,6 +98,43 @@
     .template-creative thead {
         background-color: #4f46e5; /* indigo-600 */
     }
+
+    /* --- 폰트 크기 조절 스타일 --- */
+    .paper { font-size: 14px; }
+    .paper.font-scale-80 { font-size: 11.2px; }
+    .paper.font-scale-90 { font-size: 12.6px; }
+    .paper.font-scale-110 { font-size: 15.4px; }
+    .paper.font-scale-120 { font-size: 16.8px; }
+
+    /* Tailwind 클래스 오버라이드 (Specificity 높임) */
+    .paper.font-scale-80 .text-4xl { font-size: 1.8rem; }
+    .paper.font-scale-80 .text-2xl { font-size: 1.2rem; }
+    .paper.font-scale-80 .text-xl { font-size: 1.0rem; }
+    .paper.font-scale-80 .text-base { font-size: 0.8rem; }
+    .paper.font-scale-80 .text-sm { font-size: 0.7rem; }
+    .paper.font-scale-80 .text-xs { font-size: 0.6rem; }
+
+    .paper.font-scale-90 .text-4xl { font-size: 2.025rem; }
+    .paper.font-scale-90 .text-2xl { font-size: 1.35rem; }
+    .paper.font-scale-90 .text-xl { font-size: 1.125rem; }
+    .paper.font-scale-90 .text-base { font-size: 0.9rem; }
+    .paper.font-scale-90 .text-sm { font-size: 0.7875rem; }
+    .paper.font-scale-90 .text-xs { font-size: 0.675rem; }
+    
+    .paper.font-scale-110 .text-4xl { font-size: 2.475rem; }
+    .paper.font-scale-110 .text-2xl { font-size: 1.65rem; }
+    .paper.font-scale-110 .text-xl { font-size: 1.375rem; }
+    .paper.font-scale-110 .text-base { font-size: 1.1rem; }
+    .paper.font-scale-110 .text-sm { font-size: 0.9625rem; }
+    .paper.font-scale-110 .text-xs { font-size: 0.825rem; }
+    
+    .paper.font-scale-120 .text-4xl { font-size: 2.7rem; }
+    .paper.font-scale-120 .text-2xl { font-size: 1.8rem; }
+    .paper.font-scale-120 .text-xl { font-size: 1.5rem; }
+    .paper.font-scale-120 .text-base { font-size: 1.2rem; }
+    .paper.font-scale-120 .text-sm { font-size: 1.05rem; }
+    .paper.font-scale-120 .text-xs { font-size: 0.9rem; }
+
   </style>
 </head>
 <body class="text-gray-200">
@@ -147,6 +187,10 @@
             <div class="flex items-center">
               <input type="checkbox" id="priceIncVat" class="h-4 w-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500">
               <label for="priceIncVat" class="ml-2 block text-sm text-gray-300">단가에 부가세 포함</label>
+            </div>
+             <div>
+              <label for="fontSize" class="block text-sm font-medium text-gray-300">본문 글자 크기: <span id="fontSizeValue">100</span>%</label>
+              <input type="range" id="fontSize" min="80" max="120" step="10" value="100" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-1">
             </div>
           </div>
         </div>
@@ -413,7 +457,8 @@
                 vatRate: parseN($('vatRate').value),
                 priceInc: $('priceIncVat').checked,
                 no: $('docNo').value,
-                issued: $('issuedAt').value 
+                issued: $('issuedAt').value,
+                fontSize: $('fontSize').value,
             }, 
             seller: {
                 name:$('seller_name').value, biz:$('seller_biz').value, ceo:$('seller_ceo').value, 
@@ -448,6 +493,7 @@
             $('priceIncVat').checked = !!meta.priceInc;
             $('docNo').value = meta.no || '';
             $('issuedAt').value = meta.issued || today();
+            $('fontSize').value = meta.fontSize || 100;
         }
         
         if (seller) {
@@ -482,11 +528,32 @@
     
     function persist(){ localStorage.setItem('invoice_doc_v3', JSON.stringify(collect())); }
     
+    function applyFontSize() {
+        const paperEl = $('paper');
+        const slider = $('fontSize');
+        const value = slider.value;
+        const valueDisplay = $('fontSizeValue');
+
+        if (valueDisplay) valueDisplay.textContent = value;
+        
+        let classList = paperEl.className;
+        classList = classList.replace(/font-scale-\d+/g, '').trim();
+        
+        if (value !== '100') {
+            classList += ` font-scale-${value}`;
+        }
+        paperEl.className = classList;
+    }
+
     function applyTemplate() {
         const tpl = $('docTemplate').value;
         const paper = $('paper');
-        paper.className = paper.className.replace(/template-\w+/g, ''); // Remove all template classes
-        paper.classList.add('template-' + tpl);
+        
+        let classList = paper.className;
+        classList = classList.replace(/template-\w+/g, '').trim();
+        classList += ` template-${tpl}`;
+        paper.className = classList;
+        
         persist();
     }
 
@@ -577,14 +644,16 @@
 
     $('btnPDF').addEventListener('click', async ()=>{
         showToast('PDF 생성 중... 잠시만 기다려주세요.');
+        const paperEl = $('paper');
+        paperEl.classList.add('pdf-render-fix');
+
         try {
-            const el = $('paper');
             if (!window.jspdf || !window.html2canvas) {
                 alert('PDF 생성 라이브러리를 불러올 수 없습니다. 대신 "인쇄" 기능을 사용해 PDF로 저장하세요.');
                 return;
             }
             const { jsPDF } = window.jspdf;
-            const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+            const canvas = await html2canvas(paperEl, { scale: 2, useCORS: true, logging: false });
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             
             const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
@@ -609,6 +678,8 @@
         } catch(e) {
             console.error(e);
             alert('PDF 생성 중 오류가 발생했습니다: ' + e.message);
+        } finally {
+            paperEl.classList.remove('pdf-render-fix');
         }
     });
 
@@ -617,10 +688,12 @@
     ['vatRate','priceIncVat'].forEach(id => $(id).addEventListener('input', calcAll));
     $('docType').addEventListener('change', ()=> { applyDocType(); persist(); });
     $('docTemplate').addEventListener('change', applyTemplate);
+    $('fontSize').addEventListener('input', applyFontSize);
+
 
     $('btnSample').addEventListener('click', ()=>{
       apply({ 
-          meta:{ type:'estimate', tpl: 'modern', vatRate:10, priceInc:false, no:'Q-2025-001', issued:today() }, 
+          meta:{ type:'estimate', tpl: 'modern', vatRate:10, priceInc:false, no:'Q-2025-001', issued:today(), fontSize: 100 }, 
           seller:{ name:'(주)모던컴퍼니', biz:'123-45-67890', ceo:'홍길동', addr:'서울특별시 강남구 테헤란로 123', tel:'02-1234-5678', email:'hello@modern.com', bank:'모던은행 123-456-789012 (주)모던컴퍼니' }, 
           buyer:{ name:'스마트 클라이언트' }, 
           items:[ 
@@ -646,11 +719,12 @@
         if (saved) { 
             try { apply(JSON.parse(saved)); } catch(e) { makeRow(); } 
         } else {
-            apply({ meta: { tpl: 'modern' } });
+            apply({ meta: { tpl: 'modern', fontSize: 100 } });
             makeRow({name:'품목 예시', spec:'상세 규격', qty:1, unit:10000}); 
         } 
         $('issuedAt').value = $('issuedAt').value || today();
         calcAll(); 
+        applyFontSize();
     })();
   </script>
 </body>
