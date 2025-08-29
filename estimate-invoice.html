@@ -54,9 +54,13 @@
     .stamp-container:active {
         cursor: grabbing;
     }
-    .pdf-render-fix tr {
-      display: block;
+    
+    /* PDF 렌더링 시 글자 잘림 방지용 스타일 */
+    .pdf-render-fix td, .pdf-render-fix th {
+       padding-top: 10px !important;
+       padding-bottom: 10px !important;
     }
+
 
     /* --- 템플릿 스타일 --- */
     .template-accent-bar { display: none; }
@@ -328,7 +332,7 @@
                 <input class="i-name w-full font-semibold outline-none focus:bg-gray-100 rounded p-1" placeholder="품명" value="${row.name || ''}">
                 <textarea class="i-spec w-full text-sm text-gray-600 mt-1 outline-none focus:bg-gray-100 rounded p-1" placeholder="상세 규격 및 설명" rows="1">${row.spec || ''}</textarea>
             </td>
-            <td class="p-2 align-top"><input class="i-qty w-full text-right outline-none focus:bg-gray-100 rounded p-1" type="number" min="0" step="0.01" value="${row.qty ?? 1}"></td>
+            <td class="p-2 align-top"><input class="i-qty w-full text-right outline-none focus:bg-gray-100 rounded p-1" type="number" min="0" step="1" oninput="this.value = Math.round(this.value);" value="${row.qty ?? 1}"></td>
             <td class="p-2 align-top"><input class="i-unit w-full text-right outline-none focus:bg-gray-100 rounded p-1" type="number" min="0" step="100" value="${row.unit ?? 0}"></td>
             <td class="i-supply p-2 text-right align-top">0</td>
             <td class="i-vat p-2 text-right align-top">0</td>
