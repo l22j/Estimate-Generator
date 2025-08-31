@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>새로운 견적서 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root { --accent-color: #2563eb; --accent-color-hover: #1d4ed8; }
+    body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; }
+    @page { size: A4; margin: 0; }
+    @media print {
+      body { background-color: #fff; }
+      .no-print { display: none !important; }
+      .paper { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; border: none !important; }
+    }
+    input, textarea { transition: box-shadow 0.2s ease-in-out; }
+    input:focus, textarea:focus { box-shadow: 0 0 0 2px var(--accent-color); outline: none; }
+    .btn { background-color: var(--accent-color); color: white; transition: background-color 0.2s ease-in-out; }
+    .btn:hover { background-color: var(--accent-color-hover); }
+    .btn-secondary { background-color: #4b5563; }
+    .btn-secondary:hover { background-color: #374151; }
+    .btn-danger { background-color: #dc2626; }
+    .btn-danger:hover { background-color: #b91c1c; }
+    .btn-add-row { background-color: #e5e7eb; color: #374151; }
+    .btn-add-row:hover { background-color: #d1d5db; }
+    .table-row { animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <main class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Control Panel -->
+    <aside class="w-full lg:w-1/3 xl:w-1/4 p-6 bg-white shadow-lg no-print overflow-y-auto">
+      <div class="sticky top-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">견적/청구서 생성기</h1>
+        
+        <div class="space-y-6">
+          <!-- Document Settings -->
+          <section>
+            <h2 class="text-lg font-semibold border-b pb-2 mb-4">문서 설정</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="docType" class="block text-sm font-medium text-gray-700">문서 종류</label>
+                  <select id="docType" class="mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                    <option value="estimate">견적서</option>
+                    <option value="invoice">청구서</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="vatRate" class="block text-sm font-medium text-gray-700">부가세율 (%)</label>
+                  <input type="number" id="vatRate" value="10" class="mt-1 block w-full bg-gray-50 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+              </div>
+              <div class="flex items-center">
+                <input type="checkbox" id="priceIncVat" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <label for="priceIncVat" class="ml-2 block text-sm text-gray-900">단가에 부가세 포함</label>
+              </div>
+            </div>
+          </section>
+
+          <!-- Stamp Settings -->
+          <section>
+            <h2 class="text-lg font-semibold border-b pb-2 mb-4">직인/서명</h2>
+            <div class="space-y-3">
+              <div>
+                <label for="stampFile" class="text-sm font-medium text-gray-700">이미지 업로드</label>
+                <input type="file" id="stampFile" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+              </div>
+            </div>
+          </section>
+
+          <!-- Actions -->
+          <section>
+            <h2 class="text-lg font-semibold border-b pb-2 mb-4">작업</h2>
+            <div class="grid grid-cols-2 gap-3">
+              <button id="btnPDF" class="w-full btn font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                PDF 저장
+              </button>
+              <button id="btnPrint" class="w-full btn btn-secondary font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7V9h6v3z" clip-rule="evenodd" /></svg>
+                인쇄
+              </button>
+              <button id="btnSave" class="w-full btn btn-secondary font-bold py-2 px-4 rounded-lg">데이터 저장</button>
+              <button id="btnLoad" class="w-full btn btn-secondary font-bold py-2 px-4 rounded-lg">데이터 불러오기</button>
+              <button id="btnSample" class="w-full btn btn-secondary font-bold py-2 px-4 rounded-lg">샘플 채우기</button>
+              <button id="btnReset" class="w-full btn btn-danger font-bold py-2 px-4 rounded-lg">초기화</button>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">데이터는 브라우저(LocalStorage)에 자동 저장됩니다.</p>
+          </section>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Paper Preview -->
+    <div class="w-full lg:w-2/3 xl:w-3/4 p-6 lg:p-12 overflow-y-auto">
+      <div id="paper" class="paper bg-white text-gray-900 rounded-lg shadow-2xl p-[15mm] w-[210mm] min-h-[297mm] mx-auto border">
+        
+        <header class="flex justify-between items-start pb-6 mb-8 border-b-2 border-gray-800">
+          <div>
+            <h2 id="docTitle" class="text-4xl font-extrabold" style="color: var(--accent-color);">견적서</h2>
+            <input id="buyer_name" placeholder="수신인 (예: OOO 귀하)" class="text-xl font-bold w-full p-1 -ml-1 mt-4 rounded-md">
+          </div>
+          <div class="text-right">
+            <div class="font-semibold text-gray-600" id="quoteNoLabel">견적번호</div>
+            <input id="docNo" class="w-40 text-right p-1 rounded-md" placeholder="Q-2025-001">
+            <div class="font-semibold text-gray-600 mt-2">발행일</div>
+            <input type="date" id="issuedAt" class="w-40 text-right p-1 rounded-md">
+          </div>
+        </header>
+
+        <section class="grid grid-cols-2 gap-12 relative">
+          <div class="space-y-2 text-sm">
+            <h3 class="text-base font-bold border-b border-gray-300 pb-1 mb-2">공급자</h3>
+            <div class="grid grid-cols-4 items-center"><strong class="col-span-1 text-gray-600">상호</strong><input id="seller_name" placeholder="회사명" class="col-span-3 p-1 rounded-md"></div>
+            <div class="grid grid-cols-4 items-center"><strong class="col-span-1 text-gray-600">대표</strong><input id="seller_ceo" placeholder="대표자명" class="col-span-3 p-1 rounded-md"></div>
+            <div class="grid grid-cols-4 items-center"><strong class="col-span-1 text-gray-600">사업자번호</strong><input id="seller_biz" placeholder="000-00-00000" class="col-span-3 p-1 rounded-md"></div>
+            <div class="grid grid-cols-4 items-center"><strong class="col-span-1 text-gray-600">주소</strong><input id="seller_addr" placeholder="사업장 주소" class="col-span-3 p-1 rounded-md"></div>
+            <div class="grid grid-cols-4 items-center"><strong class="col-span-1 text-gray-600">연락처</strong><input id="seller_tel" placeholder="전화번호" class="col-span-3 p-1 rounded-md"></div>
+          </div>
+          <div id="stamp" class="absolute right-0 top-0 w-[90px] h-[90px] stamp-container flex items-center justify-center border-2 border-dashed rounded-full">
+             <span class="text-xs text-gray-400">직인</span>
+          </div>
+        </section>
+
+        <section class="mt-10">
+          <table class="w-full" id="itemTable">
+            <thead class="border-b-2 border-gray-800">
+              <tr>
+                <th class="p-2 text-left text-sm font-bold w-[5%]">#</th>
+                <th class="p-2 text-left text-sm font-bold w-[40%]">품명 및 규격</th>
+                <th class="p-2 text-right text-sm font-bold w-[10%]">수량</th>
+                <th class="p-2 text-right text-sm font-bold w-[15%]">단가</th>
+                <th class="p-2 text-right text-sm font-bold w-[15%]">공급가액</th>
+                <th class="p-2 text-right text-sm font-bold w-[15%]">부가세</th>
+              </tr>
+            </thead>
+            <tbody id="itemBody"></tbody>
+          </table>
+          <button id="btnAdd" class="mt-4 w-full btn-add-row font-bold py-2 px-4 rounded-lg flex items-center justify-center text-sm">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+            항목 추가
+          </button>
+        </section>
+
+        <section class="mt-8 flex justify-between items-start">
+            <div class="w-1/2">
+                <h3 class="text-base font-bold mb-2">비고</h3>
+                <textarea id="memo" placeholder="결제 조건, 납기일 등 특이사항을 기재하세요." class="w-full h-24 p-2 text-sm rounded-md border border-gray-300"></textarea>
+            </div>
+            <div class="w-2/5">
+              <div class="space-y-2 p-4 bg-gray-50 rounded-lg">
+                <div class="flex justify-between text-sm"><span class="font-semibold text-gray-600">공급가액 합계</span><span id="sumSupply">0</span></div>
+                <div class="flex justify-between text-sm"><span class="font-semibold text-gray-600">부가세 합계</span><span id="sumVat">0</span></div>
+                <hr class="my-1 border-gray-300">
+                <div class="flex justify-between text-lg font-extrabold"><span class="">총 합계 금액</span><span id="grand">0</span></div>
+              </div>
+            </div>
+        </section>
+
+        <footer class="mt-16 text-center text-xs text-gray-500 pt-6 border-t">
+            <input id="seller_bank" class="w-full text-center p-1 rounded-md" placeholder="입금 계좌: [은행명] 123-456-789012 (예금주: OOO)">
+        </footer>
+      </div>
+    </div>
+  </main>
+  
+  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-5 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg hidden transition-opacity duration-300"></div>
+
+  <!-- PDF Generation Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <!-- Main Application Logic -->
+  <script type="module">
+    const nanumGothic = `AAEAAAARAQAABAAQRFNJRwAAAAAAAQAAAAAADABBR1BPUwAAAAAAcwAAAAgAAAD8R0RFRgAAAIgAAAAcAAAAIAAAAApHU1VCAAAAnAAAAAgAAAAKdmFYT1MvMgAAATAAAAA/AAAAYBbkA29jbWFwAAAB3AAAAGAAAABsbnAFlGN2dCAAAAIcAAAAAQAAAAEADQGkZ2FzcAAAAhAAAAAIAAAACAAAABBnbHlmAAACJAAAAFUAAAE0t5kL/2hlYWQAAASXAAAAKgAAADYGW8OZGhoZWEAAAnUAAAAGgAAACQGfwbgaG10eAAAChQAAAAOAAAAEAwAAABsb2NhAAAKJAAAABgAAAAYATgBaG1heHAAAAo4AAAAEwAAACAAWwAAbmFtZQAAClkAAAA8AAAAvgHI/gdwb3N0AAADBAAAACAAAAA+AAMAAHicY2BkYABgtseztBjFwMjA8M3IDALlsjizZGNgYGJAAgB5GBhYGRj/ABLOWcA8BhIA/L4M9HicY2BkYGDw/wAQGACpDAw/DAxAgQEAQ+sD5nicY2BkYGBgZHZgZmBnA8MPiwwDAwNj/x8EAwMDAwOT/P/B/wYGANQcCicAAHicY2BkYGBgYAhjGGRgZAACYIZwGBhYARiYkYGBg/v/AwAZtwfDAAAAeJxtzjFuwkAURdFv5pI4kGq3BIAE2EHYcg4vQ1+AhZYB2YVdGMiA3YQN2IAdOP4SP7C85929l/c0E/wYgwn+GeM4G8A5GMBPFuC+BPQ3kZgA93iAD3jBHsD4W+B3wH6A3iA5HKA3wR6A/iDPB6Q5GKA3wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/wR6C/iA9HqC9GKA/wR6D/iAnHqC/GKA/wR6E/iCHHqC/GKA/wR6G/iAnHqA5GKA/w`;
+
+    const $ = (id) => document.getElementById(id);
+    const fmtKRW = (n) => n.toLocaleString('ko-KR') + ' 원';
+    const parseN = (v) => isFinite(+v) ? +v : 0;
+    
+    function showToast(msg, ms=3000){ 
+        const t = $('toast'); 
+        t.textContent = msg; 
+        t.style.opacity = 1; 
+        t.hidden = false; 
+        clearTimeout(showToast._tid); 
+        showToast._tid=setTimeout(()=> { 
+            t.style.opacity = 0; 
+            setTimeout(() => t.hidden = true, 300); 
+        }, ms); 
+    }
+    
+    function today(){ return new Date().toISOString().slice(0,10); }
+
+    const itemBody = $('itemBody');
+
+    // --- Core Functions ---
+    function makeRow(row = {}) { 
+        const tr = document.createElement('tr');
+        tr.className = 'border-b table-row';
+        tr.innerHTML = `
+            <td class="p-2 text-center text-sm text-gray-500 align-top pt-4"></td>
+            <td class="p-2 align-top">
+                <input class="i-name w-full font-semibold outline-none p-1 rounded-md" placeholder="품명" value="${row.name || ''}">
+                <textarea class="i-spec w-full text-sm text-gray-600 mt-1 outline-none p-1 rounded-md border" placeholder="상세 규격 및 설명" rows="1">${row.spec || ''}</textarea>
+            </td>
+            <td class="p-2 align-top pt-3"><input class="i-qty w-full text-right outline-none p-1 rounded-md border" type="number" min="0" value="${row.qty ?? 1}"></td>
+            <td class="p-2 align-top pt-3"><input class="i-unit w-full text-right outline-none p-1 rounded-md border" type="number" min="0" value="${row.unit ?? 0}"></td>
+            <td class="i-supply p-2 text-right align-top pt-3">0</td>
+            <td class="i-vat p-2 text-right align-top pt-3">0</td>
+            <td class="p-2 align-top pt-3"><button class="btn-del text-red-500 hover:text-red-700 font-bold">✕</button></td>
+        `;
+        
+        const textarea = tr.querySelector('.i-spec');
+        const autoResize = () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        };
+        textarea.addEventListener('input', autoResize);
+        setTimeout(autoResize, 0);
+
+        tr.querySelector('.btn-del').addEventListener('click', (e)=> { e.target.closest('tr').remove(); renumber(); calcAll(); });
+        tr.querySelectorAll('input, textarea').forEach(el=> el.addEventListener('input', calcAll));
+        
+        itemBody.appendChild(tr); 
+        renumber();
+        calcAll();
+    }
+    
+    function renumber(){ [...itemBody.querySelectorAll('tr')].forEach((tr, i) => tr.firstElementChild.textContent = i + 1); }
+
+    function calcAll(){ 
+        const vatRate = parseN($('vatRate').value) / 100; 
+        const priceInc = $('priceIncVat').checked; 
+        let sumSupply = 0, sumVat = 0;
+        
+        [...itemBody.querySelectorAll('tr')].forEach(tr => {
+            const qty = parseN(tr.querySelector('.i-qty').value);
+            const unit = parseN(tr.querySelector('.i-unit').value);
+            let supply = 0, vat = 0;
+
+            if (priceInc) {
+                const total = qty * unit;
+                supply = Math.round(total / (1 + vatRate));
+                vat = total - supply;
+            } else {
+                supply = qty * unit;
+                vat = Math.round(supply * vatRate);
+            }
+            
+            tr.querySelector('.i-supply').textContent = supply.toLocaleString('ko-KR');
+            tr.querySelector('.i-vat').textContent = vat.toLocaleString('ko-KR');
+            sumSupply += supply;
+            sumVat += vat;
+        });
+
+        const grand = sumSupply + sumVat;
+        $('sumSupply').textContent = fmtKRW(sumSupply);
+        $('sumVat').textContent = fmtKRW(sumVat);
+        $('grand').textContent = fmtKRW(grand);
+        persist();
+    }
+
+    // --- Stamp ---
+    let stampImg = null;
+    let drag = { on: false, x: 0, y: 0, tx: 0, ty: 0 };
+
+    function setupStamp() {
+        const box = $('stamp');
+        box.addEventListener('mousedown', e => {
+            if (!stampImg) return;
+            drag.on = true;
+            drag.x = e.clientX;
+            drag.y = e.clientY;
+            const transform = new DOMMatrix(getComputedStyle(stampImg).transform);
+            drag.tx = transform.e;
+            drag.ty = transform.f;
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!drag.on) return;
+            const dx = e.clientX - drag.x;
+            const dy = e.clientY - drag.y;
+            stampImg.style.transform = `translate(${drag.tx + dx}px, ${drag.ty + dy}px)`;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (drag.on) {
+                drag.on = false;
+                persist();
+            }
+        });
+    }
+
+    $('stampFile').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (!stampImg) {
+                stampImg = new Image();
+                stampImg.className = 'absolute top-0 left-0 w-full h-full object-contain pointer-events-none';
+                $('stamp').innerHTML = '';
+                $('stamp').appendChild(stampImg);
+            }
+            stampImg.src = reader.result;
+            persist();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // --- Data Persistence ---
+    const APP_KEY = 'invoice_generator_v5';
+    function collect(){ 
+        const stampTransform = stampImg ? getComputedStyle(stampImg).transform : null;
+        return { 
+            meta: { type: $('docType').value, vatRate: $('vatRate').value, priceInc: $('priceIncVat').checked, no: $('docNo').value, issued: $('issuedAt').value },
+            seller: { name: $('seller_name').value, ceo: $('seller_ceo').value, biz: $('seller_biz').value, addr: $('seller_addr').value, tel: $('seller_tel').value, bank: $('seller_bank').value },
+            buyer: { name: $('buyer_name').value }, 
+            items: [...itemBody.querySelectorAll('tr')].map(tr => ({ name: tr.querySelector('.i-name').value, spec: tr.querySelector('.i-spec').value, qty: tr.querySelector('.i-qty').value, unit: tr.querySelector('.i-unit').value })),
+            memo: $('memo').value,
+            stamp: stampImg ? { src: stampImg.src, transform: stampTransform } : null 
+        }; 
+    }
+    
+    function apply(data){ 
+        if (!data) return;
+        const { meta, seller, buyer, items, memo, stamp } = data;
+        if (meta) {
+            $('docType').value = meta.type || 'estimate';
+            $('vatRate').value = meta.vatRate ?? 10;
+            $('priceIncVat').checked = !!meta.priceInc;
+            $('docNo').value = meta.no || '';
+            $('issuedAt').value = meta.issued || today();
+        }
+        if (seller) {
+            for (const key in seller) { if ($(`seller_${key}`)) $(`seller_${key}`).value = seller[key]; }
+        }
+        if (buyer) { $('buyer_name').value = buyer.name || ''; }
+        
+        itemBody.innerHTML = '';
+        (items || []).forEach(makeRow);
+        if ((items || []).length === 0) makeRow();
+        
+        $('memo').value = memo || '';
+        
+        if (stamp && stamp.src) {
+            if (!stampImg) {
+                stampImg = new Image();
+                stampImg.className = 'absolute top-0 left-0 w-full h-full object-contain pointer-events-none';
+                $('stamp').innerHTML = '';
+                $('stamp').appendChild(stampImg);
+            }
+            stampImg.src = stamp.src;
+            stampImg.style.transform = stamp.transform || 'translate(0px, 0px)';
+        }
+        
+        updateDocUI(); 
+        calcAll(); 
+    }
+    
+    function persist() { try { localStorage.setItem(APP_KEY, JSON.stringify(collect())); } catch(e) { console.error("Could not save data", e); } }
+    
+    function updateDocUI() {
+        const type = $('docType').value;
+        $('docTitle').textContent = type === 'estimate' ? '견적서' : '청구서';
+        $('quoteNoLabel').textContent = type === 'estimate' ? '견적번호' : '청구번호';
+    }
+
+    // --- PDF Generation ---
+    async function generatePdf() {
+        const btn = $('btnPDF');
+        btn.disabled = true;
+        showToast('PDF 생성 중...', 4000);
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const data = collect();
+
+            // Add Korean font
+            doc.addFileToVFS('NanumGothic.ttf', nanumGothic);
+            doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal');
+            doc.setFont('NanumGothic');
+
+            let y = 20;
+            const margin = 15;
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            // Title
+            doc.setFontSize(22);
+            doc.text(data.meta.type === 'estimate' ? '견 적 서' : '청 구 서', pageWidth / 2, y, { align: 'center' });
+            y += 15;
+
+            // Recipient
+            doc.setFontSize(14);
+            doc.text(`${data.buyer.name || '(수신인 없음)'}`, margin, y);
+            y += 10;
+
+            // Doc No & Date
+            const rightAlignX = pageWidth - margin;
+            doc.setFontSize(10);
+            doc.text(`${data.meta.type === 'estimate' ? '견적번호' : '청구번호'}: ${data.meta.no}`, rightAlignX, y - 5, { align: 'right' });
+            doc.text(`발 행 일: ${data.meta.issued}`, rightAlignX, y, { align: 'right' });
+            
+            y += 5;
+            doc.setLineWidth(0.5);
+            doc.line(margin, y, rightAlignX, y); // horizontal line
+            y += 10;
+
+            // Seller Info
+            doc.setFontSize(10);
+            const sellerInfo = [
+                `상      호: ${data.seller.name}`,
+                `대      표: ${data.seller.ceo}`,
+                `사업자번호: ${data.seller.biz}`,
+                `주      소: ${data.seller.addr}`,
+                `연  락  처: ${data.seller.tel}`,
+            ];
+            doc.text(sellerInfo, margin, y);
+
+            // Stamp Image
+            if (data.stamp && data.stamp.src) {
+                const matrix = new DOMMatrix(data.stamp.transform);
+                // Convert CSS pixels to PDF points (approx 1px = 0.75pt)
+                // And position relative to the seller info box.
+                const stampX = 135 + (matrix.e * 0.26);
+                const stampY = y - 5 + (matrix.f * 0.26);
+                doc.addImage(data.stamp.src, 'PNG', stampX, stampY, 30, 30);
+            }
+
+            // Items Table
+            const head = [['#', '품명 및 규격', '수량', '단가', '공급가액', '부가세']];
+            const body = data.items.map((item, i) => {
+                const qty = parseN(item.qty);
+                const unit = parseN(item.unit);
+                let supply, vat;
+                if(data.meta.priceInc) {
+                    const total = qty * unit;
+                    supply = Math.round(total / (1 + parseN(data.meta.vatRate)/100));
+                    vat = total - supply;
+                } else {
+                    supply = qty * unit;
+                    vat = Math.round(supply * parseN(data.meta.vatRate)/100);
+                }
+                const specText = item.spec ? `\n  - ${item.spec.replace(/\n/g, '\n  - ')}` : '';
+                return [
+                    i + 1,
+                    `${item.name}${specText}`,
+                    qty.toLocaleString(),
+                    unit.toLocaleString(),
+                    supply.toLocaleString(),
+                    vat.toLocaleString()
+                ];
+            });
+
+            doc.autoTable({
+                head: head,
+                body: body,
+                startY: y + 35,
+                margin: { left: margin, right: margin },
+                styles: { font: 'NanumGothic', fontSize: 9 },
+                headStyles: { fillColor: [55, 65, 81], halign: 'center' },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 10 },
+                    1: { cellWidth: 'auto' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' },
+                    4: { halign: 'right' },
+                    5: { halign: 'right' },
+                }
+            });
+
+            const finalY = doc.autoTable.previous.finalY;
+            
+            // Totals
+            const grandTotal = body.reduce((sum, row) => sum + parseN(row[4].replace(/,/g, '')) + parseN(row[5].replace(/,/g, '')), 0);
+            doc.setFontSize(12);
+            doc.text(`총 합계 금액: ${fmtKRW(grandTotal)}`, rightAlignX, finalY + 15, { align: 'right' });
+            
+            // Memo
+            if(data.memo) {
+                doc.setFontSize(9);
+                doc.text('비고', margin, finalY + 25);
+                doc.setDrawColor(200);
+                doc.roundedRect(margin, finalY + 27, (pageWidth/2) - margin, 30, 2, 2, 'S');
+                doc.text(data.memo, margin + 3, finalY + 33, { maxWidth: (pageWidth/2) - margin - 6 });
+            }
+
+            // Footer (Bank info)
+            const pageHeight = doc.internal.pageSize.getHeight();
+            doc.setFontSize(9);
+            doc.text(data.seller.bank, pageWidth/2, pageHeight - 15, { align: 'center' });
+
+
+            doc.save(`[${$('docTitle').textContent}]_${data.meta.no || 'document'}.pdf`);
+
+        } catch (error) {
+            console.error('PDF 생성 오류:', error);
+            showToast('PDF 생성 중 오류가 발생했습니다.', 4000);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+
+    // --- Event Listeners ---
+    $('btnPDF').addEventListener('click', generatePdf);
+    $('btnPrint').addEventListener('click', () => window.print());
+    $('btnAdd').addEventListener('click', () => makeRow());
+    ['docType', 'vatRate', 'priceIncVat'].forEach(id => $(id).addEventListener('input', () => { updateDocUI(); calcAll(); }));
+
+    $('btnSave').addEventListener('click', () => {
+        persist();
+        showToast('데이터가 저장되었습니다.');
+    });
+    $('btnLoad').addEventListener('click', () => {
+        apply(JSON.parse(localStorage.getItem(APP_KEY)));
+        showToast('데이터를 불러왔습니다.');
+    });
+
+    $('btnSample').addEventListener('click', () => {
+        apply({ 
+            meta:{ type:'estimate', vatRate:'10', priceInc:false, no:'Q-2025-001', issued:today() }, 
+            seller:{ name:'(주)프롬프트컴퍼니', ceo:'홍길동', biz:'123-45-67890', addr:'서울특별시 강남구 테헤란로 123, 45층', tel:'02-1234-5678', bank:'프롬프트은행 123-456-789012 (주)프롬프트컴퍼니' }, 
+            buyer:{ name:'스마트 클라이언트 귀하' }, 
+            items:[ 
+                { name:'프로젝트 컨설팅', spec:'요구사항 분석 및 기획', qty:'1', unit:'1500000' }, 
+                { name:'UI/UX 디자인', spec:'웹/모바일 반응형 디자인 (5p)', qty:'1', unit:'2500000' }, 
+                { name:'프론트엔드 개발', spec:'React 기반 인터랙티브 UI 개발\n- 주요 기능 구현 포함', qty:'1', unit:'4000000' }
+            ], 
+            memo:'본 견적서의 유효기간은 발행일로부터 30일입니다.\n부가세 별도 금액입니다.'
+        }); 
+        showToast('샘플 데이터가 적용되었습니다.');
+    });
+    
+    $('btnReset').addEventListener('click', (e) => { 
+        const btn = e.currentTarget;
+        if (btn.getAttribute('data-confirm')) {
+            localStorage.removeItem(APP_KEY); 
+            window.location.reload();
+            return;
+        }
+        btn.setAttribute('data-confirm', 'true');
+        btn.textContent = '정말 초기화할까요?';
+        setTimeout(() => {
+            btn.removeAttribute('data-confirm');
+            btn.textContent = '초기화';
+        }, 3000);
+    });
+
+    // --- Initialization ---
+    (function init(){ 
+        setupStamp();
+        try {
+            const saved = localStorage.getItem(APP_KEY);
+            if (saved) apply(JSON.parse(saved));
+            else makeRow();
+        } catch(e) {
+            console.error("Failed to load data", e);
+            makeRow();
+        } 
+        if(!$('issuedAt').value) $('issuedAt').value = today();
+        updateDocUI(); 
+        calcAll();
+    })();
+  </script>
+</body>
+</html>
+
